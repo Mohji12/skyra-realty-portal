@@ -357,7 +357,7 @@ export function PropertyForm({
                     draft.images.map((v, idx) => (idx === i ? e.target.value : v)),
                   )
                 }
-                placeholder="https://images.unsplash.com/photo-…?auto=format&fit=crop&w=1200&h=800&q=80"
+                placeholder="/listings/shop-01.jpg or https://…"
               />
               <Button
                 type="button"

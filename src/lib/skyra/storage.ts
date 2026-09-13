@@ -8,10 +8,10 @@ import type { PageViewEntry, Property } from "./types";
  */
 
 /** Bump when seed image URLs change so stored listings get fresh photos. */
-const IMAGE_REVISION = 6;
+const IMAGE_REVISION = 7;
 
 const KEYS = {
-  properties: "skyra.properties.v6",
+  properties: "skyra.properties.v7",
   imageRevision: "skyra.image-revision",
   pageViews: "skyra.pageviews.v1",
   visits: "skyra.visits.v1",
@@ -23,6 +23,7 @@ const LEGACY_PROPERTY_KEYS = [
   "skyra.properties.v3",
   "skyra.properties.v4",
   "skyra.properties.v5",
+  "skyra.properties.v6",
 ] as const;
 
 const isBrowser = () => typeof window !== "undefined";
