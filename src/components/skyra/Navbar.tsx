@@ -39,6 +39,7 @@ export function Navbar() {
             placeholder="Search locality, project or address"
             aria-label="Search properties"
             className="min-w-0 flex-1 bg-transparent text-sm text-navy-foreground placeholder:text-navy-foreground/50 focus:outline-none"
+            suppressHydrationWarning
           />
           <Button type="submit" variant="gold" size="sm" className="rounded-full px-3">
             Search
@@ -69,6 +70,7 @@ export function Navbar() {
           aria-label={open ? "Close menu" : "Open menu"}
           aria-expanded={open}
           className="grid h-11 w-11 shrink-0 place-items-center rounded-md border border-gold/25 text-gold lg:hidden"
+          suppressHydrationWarning
         >
           {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
@@ -87,6 +89,7 @@ export function Navbar() {
               placeholder="Search locality or project"
               aria-label="Search properties"
               className="min-w-0 flex-1 bg-transparent text-sm text-navy-foreground placeholder:text-navy-foreground/50 focus:outline-none"
+              suppressHydrationWarning
             />
             <Button type="submit" variant="gold" size="sm" className="rounded-full">
               Go

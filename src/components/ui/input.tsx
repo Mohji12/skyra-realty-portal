@@ -12,6 +12,9 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
           className,
         )}
         ref={ref}
+        // Browser extensions (password managers, etc.) inject attrs like fdprocessedid
+        // before hydration; ignore those attribute mismatches.
+        suppressHydrationWarning
         {...props}
       />
     );

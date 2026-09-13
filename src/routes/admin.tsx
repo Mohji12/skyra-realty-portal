@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -71,6 +71,12 @@ function AdminPage() {
 function AdminGate({ onUnlock }: { onUnlock: () => void }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    // Focus after mount so password managers don't mutate SSR HTML first.
+    inputRef.current?.focus();
+  }, []);
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -97,6 +103,7 @@ function AdminGate({ onUnlock }: { onUnlock: () => void }) {
           <div className="space-y-1.5">
             <Label htmlFor="admin-password">Password</Label>
             <Input
+              ref={inputRef}
               id="admin-password"
               type="password"
               value={password}
@@ -105,7 +112,7 @@ function AdminGate({ onUnlock }: { onUnlock: () => void }) {
                 setError(null);
               }}
               placeholder="Enter admin password"
-              autoFocus
+              autoComplete="current-password"
             />
             {error && <p className="text-xs text-destructive">{error}</p>}
           </div>
