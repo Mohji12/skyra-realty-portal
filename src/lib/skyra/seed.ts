@@ -73,13 +73,13 @@ const AREA: Record<PropertyType, [number, number]> = {
 };
 
 /**
- * Local listing photos (committed under /public/listings).
- * Served from the same origin in local + production — no external CDN dependency.
+ * Local listing photos (committed under /public/property-photos).
+ * Path must NOT be /listings/* — that conflicts with the /listings route in production.
  */
 function listingPhotos(slug: string, count = 8): string[] {
   return Array.from({ length: count }, (_, i) => {
     const n = String(i + 1).padStart(2, "0");
-    return `/listings/${slug}-${n}.jpg`;
+    return `/property-photos/${slug}-${n}.jpg`;
   });
 }
 
