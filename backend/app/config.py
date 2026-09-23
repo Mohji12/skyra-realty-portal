@@ -14,7 +14,11 @@ class Settings(BaseSettings):
     )
 
     database_url: str = "mysql+pymysql://root:password@127.0.0.1:3306/skyra"
-    cors_origins: str = "http://localhost:8080,http://127.0.0.1:8080"
+    cors_origins: str = (
+        "http://localhost:8080,"
+        "http://127.0.0.1:8080,"
+        "https://skyra-realty-portal.vercel.app"
+    )
     session_cookie_name: str = "skyra_session"
     session_days: int = 7
     admin_email: str = "admin@skyrarealty.local"

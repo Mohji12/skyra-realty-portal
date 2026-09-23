@@ -9,9 +9,11 @@ settings = get_settings()
 
 app = FastAPI(title="Skyra Realty API", version="1.0.0")
 
+# Allow exact origins from env + Vercel preview deployments of this project.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
+    allow_origin_regex=r"https://skyra-realty-portal(-[a-z0-9-]+)?\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
