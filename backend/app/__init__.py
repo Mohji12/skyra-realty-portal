@@ -1,0 +1,1 @@
+"""Skyra Realty FastAPI package."""

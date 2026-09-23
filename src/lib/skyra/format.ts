@@ -28,3 +28,9 @@ export function pricePerSqft(price: number, area: number): string {
   if (!area) return "—";
   return `₹${Math.round(price / area).toLocaleString("en-IN")}/sq.ft`;
 }
+
+/** Opens Google Maps search for the given address (new tab). */
+export function googleMapsUrl(address: string): string {
+  const query = address.trim();
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}

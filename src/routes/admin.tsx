@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Eye, Lock, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { Eye, Lock, LogOut, Pencil, Plus, Trash2 } from "lucide-react";
 import { SiteLayout } from "@/components/skyra/SiteLayout";
 import { PropertyForm, type PropertyDraft } from "@/components/skyra/PropertyForm";
 import { Button } from "@/components/ui/button";
@@ -19,19 +19,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useProperties } from "@/hooks/useProperties";
 import { usePageView } from "@/hooks/usePageView";
-import { ADMIN_PASSWORD } from "@/lib/skyra/constants";
+import { getSession, login, logout } from "@/lib/auth/auth.functions";
 import {
-  addProperty,
+  createProperty,
   deleteProperty,
-  getPageViews,
-  getVisits,
-  resetToSeed,
   updateProperty,
-} from "@/lib/skyra/storage";
+} from "@/lib/skyra/properties.functions";
+import { getPageViews, getVisits } from "@/lib/skyra/storage";
 import { formatDate, formatPrice } from "@/lib/skyra/format";
 import type { Property } from "@/lib/skyra/types";
-
-const ADMIN_SESSION_KEY = "skyra.adminUnlocked";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -49,43 +45,80 @@ export const Route = createFileRoute("/admin")({
 
 type Tab = "manage" | "add" | "analytics";
 
+type AdminUser = { id: string; email: string };
+
 function AdminPage() {
   usePageView("Admin page");
-  const [unlocked, setUnlocked] = useState(false);
+  const [admin, setAdmin] = useState<AdminUser | null>(null);
+  const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    setUnlocked(sessionStorage.getItem(ADMIN_SESSION_KEY) === "1");
+    let cancelled = false;
+    void getSession()
+      .then((session) => {
+        if (cancelled) return;
+        if (session.authenticated) setAdmin(session.admin);
+      })
+      .catch(() => {
+        if (!cancelled) setAdmin(null);
+      })
+      .finally(() => {
+        if (!cancelled) setChecking(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  if (!unlocked) {
+  if (checking) {
     return (
       <SiteLayout>
-        <AdminGate onUnlock={() => setUnlocked(true)} />
+        <div className="mx-auto flex min-h-[50vh] max-w-md items-center justify-center px-4 py-16 text-sm text-muted-foreground">
+          Checking session…
+        </div>
       </SiteLayout>
     );
   }
 
-  return <AdminDashboard />;
+  if (!admin) {
+    return (
+      <SiteLayout>
+        <AdminGate onUnlock={(user) => setAdmin(user)} />
+      </SiteLayout>
+    );
+  }
+
+  return (
+    <AdminDashboard
+      admin={admin}
+      onLogout={() => setAdmin(null)}
+    />
+  );
 }
 
-function AdminGate({ onUnlock }: { onUnlock: () => void }) {
+function AdminGate({ onUnlock }: { onUnlock: (admin: AdminUser) => void }) {
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Focus after mount so password managers don't mutate SSR HTML first.
     inputRef.current?.focus();
   }, []);
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (password === ADMIN_PASSWORD) {
-      sessionStorage.setItem(ADMIN_SESSION_KEY, "1");
-      onUnlock();
-      return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const result = await login({ data: { email, password } });
+      onUnlock(result.admin);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed");
+    } finally {
+      setSubmitting(false);
     }
-    setError("Incorrect password. Try again.");
   }
 
   return (
@@ -96,14 +129,28 @@ function AdminGate({ onUnlock }: { onUnlock: () => void }) {
         </div>
         <h1 className="mt-4 font-display text-2xl font-bold text-navy">Admin access</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Enter the admin password to manage listings and view analytics. This is a
-          simple frontend gate — not real authentication.
+          Sign in with your admin email and password to manage listings.
         </p>
         <form onSubmit={submit} className="mt-6 space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="admin-password">Password</Label>
+            <Label htmlFor="admin-email">Email</Label>
             <Input
               ref={inputRef}
+              id="admin-email"
+              type="email"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setError(null);
+              }}
+              placeholder="admin@example.com"
+              autoComplete="username"
+              required
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="admin-password">Password</Label>
+            <Input
               id="admin-password"
               type="password"
               value={password}
@@ -111,75 +158,94 @@ function AdminGate({ onUnlock }: { onUnlock: () => void }) {
                 setPassword(e.target.value);
                 setError(null);
               }}
-              placeholder="Enter admin password"
+              placeholder="Enter password"
               autoComplete="current-password"
+              required
             />
             {error && <p className="text-xs text-destructive">{error}</p>}
           </div>
-          <Button type="submit" variant="gold" className="w-full">
-            Unlock admin
+          <Button type="submit" variant="gold" className="w-full" disabled={submitting}>
+            {submitting ? "Signing in…" : "Sign in"}
           </Button>
         </form>
-        <p className="mt-4 text-xs text-muted-foreground">
-          Demo password: <span className="font-medium text-navy">{ADMIN_PASSWORD}</span>
-        </p>
       </div>
     </div>
   );
 }
 
-function AdminDashboard() {
+function AdminDashboard({
+  admin,
+  onLogout,
+}: {
+  admin: AdminUser;
+  onLogout: () => void;
+}) {
   const { properties, ready, refresh } = useProperties();
   const [tab, setTab] = useState<Tab>("manage");
   const [editing, setEditing] = useState<Property | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   function flash(message: string) {
     setNotice(message);
     window.setTimeout(() => setNotice(null), 3200);
   }
 
-  function handleCreate(values: PropertyDraft) {
-    const property: Property = {
-      ...values,
-      id: values.id || `skyra-${crypto.randomUUID()}`,
-      viewCount: 0,
-    };
-    addProperty(property);
-    setTab("manage");
-    setEditing(null);
-    flash(`Listed “${property.title}”.`);
+  async function handleLogout() {
+    await logout();
+    onLogout();
   }
 
-  function handleUpdate(values: PropertyDraft) {
+  async function handleCreate(values: PropertyDraft) {
+    setBusy(true);
+    try {
+      const property = await createProperty({ data: values });
+      await refresh();
+      setTab("manage");
+      setEditing(null);
+      flash(`Listed “${property.title}”.`);
+    } catch (err) {
+      flash(err instanceof Error ? err.message : "Failed to create listing");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleUpdate(values: PropertyDraft) {
     if (!editing) return;
-    updateProperty(editing.id, { ...values, viewCount: editing.viewCount });
-    setEditing(null);
-    setTab("manage");
-    flash(`Updated “${values.title}”.`);
-  }
-
-  function handleDelete(property: Property) {
-    const ok = window.confirm(`Delete “${property.title}”? This cannot be undone.`);
-    if (!ok) return;
-    deleteProperty(property.id);
-    if (editing?.id === property.id) {
+    setBusy(true);
+    try {
+      await updateProperty({
+        data: { id: editing.id, values },
+      });
+      await refresh();
       setEditing(null);
       setTab("manage");
+      flash(`Updated “${values.title}”.`);
+    } catch (err) {
+      flash(err instanceof Error ? err.message : "Failed to update listing");
+    } finally {
+      setBusy(false);
     }
-    flash(`Deleted “${property.title}”.`);
   }
 
-  function handleReset() {
-    const ok = window.confirm(
-      "Reset all properties and analytics to the original seed data? Your local edits will be lost.",
-    );
+  async function handleDelete(property: Property) {
+    const ok = window.confirm(`Delete “${property.title}”? This cannot be undone.`);
     if (!ok) return;
-    resetToSeed();
-    refresh();
-    setEditing(null);
-    setTab("manage");
-    flash("Restored seed data and cleared analytics.");
+    setBusy(true);
+    try {
+      await deleteProperty({ data: { id: property.id } });
+      await refresh();
+      if (editing?.id === property.id) {
+        setEditing(null);
+        setTab("manage");
+      }
+      flash(`Deleted “${property.title}”.`);
+    } catch (err) {
+      flash(err instanceof Error ? err.message : "Failed to delete listing");
+    } finally {
+      setBusy(false);
+    }
   }
 
   const sorted = useMemo(
@@ -197,13 +263,13 @@ function AdminDashboard() {
               Manage listings & analytics
             </h1>
             <p className="mt-2 max-w-xl text-sm text-navy-foreground/70">
-              Add, edit or remove Bengaluru properties. Analytics are browser-local
-              only — there is no server-side tracking.
+              Listings are stored in MySQL and appear on the public site for every
+              visitor. Signed in as {admin.email}.
             </p>
           </div>
-          <Button variant="goldOutline" className="w-full sm:w-auto" onClick={handleReset}>
-            <RotateCcw className="h-4 w-4" />
-            Reset to seed
+          <Button variant="goldOutline" className="w-full sm:w-auto" onClick={handleLogout}>
+            <LogOut className="h-4 w-4" />
+            Sign out
           </Button>
         </div>
       </section>
@@ -254,11 +320,12 @@ function AdminDashboard() {
           <div className="mt-6">
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-muted-foreground">
-                {ready ? `${sorted.length} properties in this browser` : "Loading…"}
+                {ready ? `${sorted.length} properties in database` : "Loading…"}
               </p>
               <Button
                 variant="gold"
                 className="w-full sm:w-auto"
+                disabled={busy}
                 onClick={() => {
                   setEditing(null);
                   setTab("add");
@@ -269,7 +336,6 @@ function AdminDashboard() {
               </Button>
             </div>
 
-            {/* Mobile / tablet cards */}
             <div className="space-y-4 lg:hidden">
               {sorted.map((p) => (
                 <article
@@ -305,6 +371,7 @@ function AdminDashboard() {
                       variant="goldOutline"
                       size="sm"
                       className="w-full"
+                      disabled={busy}
                       onClick={() => {
                         setEditing(p);
                         setTab("add");
@@ -316,6 +383,7 @@ function AdminDashboard() {
                       variant="ghost"
                       size="sm"
                       className="w-full text-destructive hover:text-destructive"
+                      disabled={busy}
                       onClick={() => handleDelete(p)}
                     >
                       Delete
@@ -330,7 +398,6 @@ function AdminDashboard() {
               )}
             </div>
 
-            {/* Desktop table */}
             <div className="hidden overflow-x-auto rounded-xl border border-border lg:block">
               <table className="w-full min-w-[860px] text-left text-sm">
                 <thead className="bg-navy text-navy-foreground">
@@ -382,6 +449,7 @@ function AdminDashboard() {
                           <Button
                             variant="goldOutline"
                             size="sm"
+                            disabled={busy}
                             onClick={() => {
                               setEditing(p);
                               setTab("add");
@@ -394,6 +462,7 @@ function AdminDashboard() {
                             variant="ghost"
                             size="sm"
                             className="text-destructive hover:text-destructive"
+                            disabled={busy}
                             onClick={() => handleDelete(p)}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -425,14 +494,19 @@ function AdminDashboard() {
               {editing ? "Edit property" : "List a new property"}
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Saved to this browser’s localStorage and shown on the public listings
-              page.
+              Saved to MySQL and shown on the public home and listings pages.
             </p>
             <div className="mt-6">
               <PropertyForm
                 key={editing?.id ?? "new"}
                 initial={editing ?? undefined}
-                submitLabel={editing ? "Save changes" : "Publish listing"}
+                submitLabel={
+                  busy
+                    ? "Saving…"
+                    : editing
+                      ? "Save changes"
+                      : "Publish listing"
+                }
                 onCancel={() => {
                   setEditing(null);
                   setTab("manage");
@@ -506,8 +580,8 @@ function AnalyticsPanel({ properties }: { properties: Property[] }) {
   return (
     <div className="mt-6 space-y-8">
       <p className="text-xs text-muted-foreground">
-        Browser-local analytics only. Totals reflect activity on this device — not
-        real multi-user traffic.
+        Page-visit analytics are browser-local. Property view counts come from the
+        shared MySQL database.
       </p>
 
       <div className="grid gap-4 sm:grid-cols-3">

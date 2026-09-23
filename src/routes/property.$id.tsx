@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   Compass,
   Eye,
+  GitCompareArrows,
   MapPin,
   Phone,
   Ruler,
@@ -20,8 +21,10 @@ import { PropertyCard } from "@/components/skyra/PropertyCard";
 import { SkylineDivider } from "@/components/skyra/Logo";
 import { Button } from "@/components/ui/button";
 import { useProperties } from "@/hooks/useProperties";
-import { logPageView, incrementViewCount } from "@/lib/skyra/storage";
-import { formatArea, formatDate, formatPrice, pricePerSqft } from "@/lib/skyra/format";
+import { useCompareSelection, MAX_COMPARE } from "@/hooks/useCompareSelection";
+import { logPageView } from "@/lib/skyra/storage";
+import { incrementPropertyViewCount } from "@/lib/skyra/properties.functions";
+import { formatArea, formatDate, formatPrice, googleMapsUrl, pricePerSqft } from "@/lib/skyra/format";
 
 export const Route = createFileRoute("/property/$id")({
   head: () => ({
@@ -46,16 +49,29 @@ export const Route = createFileRoute("/property/$id")({
 
 function PropertyDetail() {
   const { id } = Route.useParams();
-  const { properties, ready } = useProperties();
+  const { properties, ready, refresh } = useProperties();
+  const { isSelected, toggle, ids: compareIds } = useCompareSelection();
   const [activeImage, setActiveImage] = useState(0);
+  const [compareNotice, setCompareNotice] = useState<string | null>(null);
 
-  // Browser-local analytics: count this detail view once per mount.
   useEffect(() => {
     logPageView(`Property ${id}`);
-    incrementViewCount(id);
-  }, [id]);
+    void incrementPropertyViewCount({ data: { id } }).then(() => refresh());
+  }, [id, refresh]);
 
   const property = properties.find((p) => p.id === id);
+  const inCompare = property ? isSelected(property.id) : false;
+
+  function handleCompareToggle() {
+    if (!property) return;
+    const result = toggle(property.id);
+    if (result.rejected) {
+      setCompareNotice(`You can compare only ${MAX_COMPARE} properties. Remove one first.`);
+      window.setTimeout(() => setCompareNotice(null), 2800);
+    } else {
+      setCompareNotice(null);
+    }
+  }
 
   const similar = useMemo(() => {
     if (!property) return [];
@@ -121,7 +137,14 @@ function PropertyDetail() {
           </h1>
           <p className="mt-3 flex items-start gap-2 text-sm text-navy-foreground/70">
             <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
-            <span className="min-w-0 break-words">{property.address}</span>
+            <a
+              href={googleMapsUrl(property.address)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="min-w-0 break-words text-gold underline-offset-2 hover:underline"
+            >
+              {property.address}
+            </a>
           </p>
         </div>
       </div>
@@ -203,19 +226,24 @@ function PropertyDetail() {
             </ul>
           </section>
 
-          {/* Locality map placeholder */}
+          {/* Locality — opens Google Maps */}
           <section>
             <h2 className="font-display text-xl font-bold text-navy sm:text-2xl">Locality</h2>
-            <div className="mt-4 grid place-items-center rounded-xl border border-dashed border-gold/40 bg-navy-deep px-4 py-14 text-center">
+            <a
+              href={googleMapsUrl(property.address)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 grid place-items-center rounded-xl border border-dashed border-gold/40 bg-navy-deep px-4 py-14 text-center transition-colors hover:border-gold hover:bg-navy"
+            >
               <MapPin className="h-6 w-6 text-gold" />
               <p className="mt-3 font-display text-lg text-navy-foreground sm:text-xl">
                 {property.locality}, Bengaluru
               </p>
-              <p className="mt-1 text-xs text-navy-foreground/60">
-                Interactive map coming soon
+              <p className="mt-1 text-xs text-gold underline-offset-2 hover:underline">
+                Open in Google Maps
               </p>
               <SkylineDivider className="mt-6 max-w-md opacity-50" />
-            </div>
+            </a>
           </section>
         </div>
 
@@ -239,6 +267,18 @@ function PropertyDetail() {
               </p>
               <p className="font-mono text-[11px]">Ref {property.id}</p>
             </div>
+            <Button
+              type="button"
+              variant={inCompare ? "gold" : "goldOutline"}
+              className="mt-5 w-full"
+              onClick={handleCompareToggle}
+            >
+              <GitCompareArrows className="h-4 w-4" />
+              {inCompare ? "Selected for compare" : "Add to compare"}
+            </Button>
+            {compareNotice && (
+              <p className="mt-2 text-xs text-destructive">{compareNotice}</p>
+            )}
           </div>
 
           <div className="rounded-xl border border-border bg-navy p-6 text-navy-foreground">
@@ -258,24 +298,35 @@ function PropertyDetail() {
         </aside>
       </div>
 
-      {/* Mobile sticky CTA */}
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-elegant backdrop-blur lg:hidden">
-        <div className="mx-auto flex max-w-7xl items-center gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="truncate font-display text-xl font-bold text-gold-deep">
-              {formatPrice(property.price)}
-            </p>
-            <p className="truncate text-xs text-muted-foreground">
-              {property.ownerContactName}
-            </p>
+      {/* Mobile sticky CTA — hidden while compare tray is open */}
+      {compareIds.length === 0 && (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-elegant backdrop-blur lg:hidden">
+          <div className="mx-auto flex max-w-7xl items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-display text-xl font-bold text-gold-deep">
+                {formatPrice(property.price)}
+              </p>
+              <p className="truncate text-xs text-muted-foreground">
+                {property.ownerContactName}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant={inCompare ? "gold" : "goldOutline"}
+              size="sm"
+              className="shrink-0 rounded-full"
+              onClick={handleCompareToggle}
+            >
+              <GitCompareArrows className="h-4 w-4" />
+            </Button>
+            <Button asChild variant="gold" className="shrink-0 rounded-full px-5">
+              <a href={`tel:${property.ownerContactPhone.replace(/\s/g, "")}`}>
+                <Phone className="h-4 w-4" /> Call
+              </a>
+            </Button>
           </div>
-          <Button asChild variant="gold" className="shrink-0 rounded-full px-5">
-            <a href={`tel:${property.ownerContactPhone.replace(/\s/g, "")}`}>
-              <Phone className="h-4 w-4" /> Call
-            </a>
-          </Button>
         </div>
-      </div>
+      )}
 
       {similar.length > 0 && (
         <section className="mx-auto max-w-7xl px-4 pb-16">

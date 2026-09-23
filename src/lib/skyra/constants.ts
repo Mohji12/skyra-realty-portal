@@ -95,5 +95,3 @@ export const NON_RESIDENTIAL: PropertyType[] = [
   "Commercial Building",
   "Shop",
 ];
-
-export const ADMIN_PASSWORD = "skyra2026";

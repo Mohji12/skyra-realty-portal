@@ -1,31 +1,30 @@
-import { useCallback, useEffect, useState } from "react";
-import { PROPERTIES_EVENT, getProperties } from "@/lib/skyra/storage";
+import { useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { listProperties } from "@/lib/skyra/properties.functions";
 import type { Property } from "@/lib/skyra/types";
 
+export const PROPERTIES_QUERY_KEY = ["properties"] as const;
+
 /**
- * Reads the localStorage-backed property list and re-reads it whenever any
- * part of the app mutates it. Starts empty on the server / first render to
- * avoid hydration mismatches.
+ * Loads the shared MySQL-backed property list. Mutations should invalidate
+ * via `refresh()` so home, listings, and admin stay in sync.
  */
 export function useProperties() {
-  const [properties, setProperties] = useState<Property[]>([]);
-  const [ready, setReady] = useState(false);
+  const queryClient = useQueryClient();
+  const query = useQuery({
+    queryKey: PROPERTIES_QUERY_KEY,
+    queryFn: () => listProperties(),
+  });
 
-  const refresh = useCallback(() => {
-    setProperties(getProperties());
-    setReady(true);
-  }, []);
+  const refresh = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: PROPERTIES_QUERY_KEY });
+  }, [queryClient]);
 
-  useEffect(() => {
-    refresh();
-    const onChange = () => refresh();
-    window.addEventListener(PROPERTIES_EVENT, onChange);
-    window.addEventListener("storage", onChange);
-    return () => {
-      window.removeEventListener(PROPERTIES_EVENT, onChange);
-      window.removeEventListener("storage", onChange);
-    };
-  }, [refresh]);
-
-  return { properties, ready, refresh };
+  return {
+    properties: (query.data ?? []) as Property[],
+    ready: query.isFetched,
+    loading: query.isLoading || query.isPending,
+    error: query.error,
+    refresh,
+  };
 }

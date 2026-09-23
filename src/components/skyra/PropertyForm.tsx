@@ -62,7 +62,7 @@ function Field({
   children,
 }: {
   label: string;
-  error?: string;
+  error?: string | undefined;
   children: React.ReactNode;
 }) {
   return (
@@ -80,15 +80,16 @@ export function PropertyForm({
   onCancel,
   submitLabel = "Save property",
 }: {
-  initial?: Property;
-  onSubmit: (values: Draft) => void;
-  onCancel?: () => void;
-  submitLabel?: string;
+  initial?: Property | undefined;
+  onSubmit: (values: Draft) => void | Promise<void>;
+  onCancel?: (() => void) | undefined;
+  submitLabel?: string | undefined;
 }) {
   const [draft, setDraft] = useState<Draft>(() =>
     initial ? { ...initial } : blankDraft(),
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
 
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) =>
     setDraft((d) => ({ ...d, [key]: value }));
@@ -109,13 +110,18 @@ export function PropertyForm({
     return Object.keys(e).length === 0;
   }
 
-  function submit(ev: React.FormEvent) {
+  async function submit(ev: React.FormEvent) {
     ev.preventDefault();
-    if (!validate()) return;
-    onSubmit({
-      ...draft,
-      images: draft.images.map((i) => i.trim()).filter(Boolean),
-    });
+    if (!validate() || submitting) return;
+    setSubmitting(true);
+    try {
+      await onSubmit({
+        ...draft,
+        images: draft.images.map((i) => i.trim()).filter(Boolean),
+      });
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -412,11 +418,11 @@ export function PropertyForm({
       </Field>
 
       <div className="flex flex-wrap gap-3">
-        <Button type="submit" variant="gold">
+        <Button type="submit" variant="gold" disabled={submitting}>
           {submitLabel}
         </Button>
         {onCancel && (
-          <Button type="button" variant="outline" onClick={onCancel}>
+          <Button type="button" variant="outline" onClick={onCancel} disabled={submitting}>
             Cancel
           </Button>
         )}

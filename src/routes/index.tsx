@@ -55,7 +55,7 @@ const TYPE_LINKS = [
 
 function Landing() {
   usePageView("Landing page");
-  const { properties } = useProperties();
+  const { properties, ready, loading, error } = useProperties();
   const navigate = useNavigate();
   const [term, setTerm] = useState("");
 
@@ -178,9 +178,22 @@ function Landing() {
         </div>
 
         <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {recent.map((p) => (
-            <PropertyCard key={p.id} property={p} />
-          ))}
+          {error ? (
+            <p className="col-span-full rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-6 text-sm text-destructive">
+              Could not load listings from the API. Start the backend with{" "}
+              <code className="font-mono">npm run api:dev</code> and refresh.
+            </p>
+          ) : loading && !ready ? (
+            <p className="col-span-full text-sm text-muted-foreground">
+              Loading listings…
+            </p>
+          ) : recent.length === 0 ? (
+            <p className="col-span-full text-sm text-muted-foreground">
+              No properties yet. Sign in to Admin and publish a listing.
+            </p>
+          ) : (
+            recent.map((p) => <PropertyCard key={p.id} property={p} />)
+          )}
         </div>
       </section>
 

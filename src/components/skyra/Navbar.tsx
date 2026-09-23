@@ -3,6 +3,7 @@ import { Menu, Search, X } from "lucide-react";
 import { useState } from "react";
 import { Logo } from "./Logo";
 import { Button } from "@/components/ui/button";
+import { useCompareSelection } from "@/hooks/useCompareSelection";
 
 const NAV = [
   { label: "Home", to: "/" as const },
@@ -14,12 +15,20 @@ export function Navbar() {
   const navigate = useNavigate();
   const [term, setTerm] = useState("");
   const [open, setOpen] = useState(false);
+  const { ids } = useCompareSelection();
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
     navigate({ to: "/listings", search: { q: term || undefined } });
     setOpen(false);
   }
+
+  const compareSearch =
+    ids.length === 2
+      ? { a: ids[0], b: ids[1] }
+      : ids.length === 1
+        ? { a: ids[0], b: undefined }
+        : { a: undefined, b: undefined };
 
   return (
     <header className="sticky top-0 z-50 border-b border-gold/15 bg-navy-deep/95 pt-[env(safe-area-inset-top)] backdrop-blur">
@@ -59,6 +68,15 @@ export function Navbar() {
               {item.label}
             </Link>
           ))}
+          <Link
+            to="/compare"
+            search={compareSearch}
+            activeProps={{ className: "text-gold" }}
+            inactiveProps={{ className: "text-navy-foreground/75" }}
+            className="text-sm font-medium transition-colors hover:text-gold"
+          >
+            Compare{ids.length > 0 ? ` (${ids.length})` : ""}
+          </Link>
           <Button asChild variant="gold" size="sm">
             <Link to="/admin">List property</Link>
           </Button>
@@ -106,6 +124,14 @@ export function Navbar() {
                 {item.label}
               </Link>
             ))}
+            <Link
+              to="/compare"
+              search={compareSearch}
+              onClick={() => setOpen(false)}
+              className="rounded-md px-3 py-3 text-base text-navy-foreground/85 hover:bg-navy hover:text-gold"
+            >
+              Compare{ids.length > 0 ? ` (${ids.length})` : ""}
+            </Link>
             <Button asChild variant="gold" className="mt-2 w-full">
               <Link to="/admin" onClick={() => setOpen(false)}>
                 List property
