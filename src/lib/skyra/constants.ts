@@ -95,3 +95,30 @@ export const NON_RESIDENTIAL: PropertyType[] = [
   "Commercial Building",
   "Shop",
 ];
+
+/** Primary Skyra contact for call & WhatsApp CTAs */
+export const CONTACT_PHONE_DISPLAY = "83103 02076";
+export const CONTACT_PHONE_TEL = "+918310302076";
+const WHATSAPP_NUMBER = "918310302076";
+
+/** WhatsApp chat link; include property name + locality when available. */
+export function contactWhatsAppUrl(opts?: {
+  title?: string;
+  locality?: string;
+}): string {
+  const title = opts?.title?.trim();
+  const locality = opts?.locality?.trim();
+
+  let message =
+    "Hi Skyra Realty, I am interested in a Bengaluru property.";
+  if (title && locality) {
+    message = `Hi Skyra Realty, I am interested in "${title}" located in ${locality}, Bengaluru. Please share more details.`;
+  } else if (title) {
+    message = `Hi Skyra Realty, I am interested in "${title}". Please share more details.`;
+  }
+
+  return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+}
+
+/** Generic footer / site-wide WhatsApp link */
+export const CONTACT_WHATSAPP_URL = contactWhatsAppUrl();

@@ -25,6 +25,11 @@ import { useCompareSelection, MAX_COMPARE } from "@/hooks/useCompareSelection";
 import { logPageView } from "@/lib/skyra/storage";
 import { incrementPropertyViewCount } from "@/lib/skyra/properties.functions";
 import { formatArea, formatDate, formatPrice, googleMapsUrl, pricePerSqft } from "@/lib/skyra/format";
+import {
+  CONTACT_PHONE_DISPLAY,
+  CONTACT_PHONE_TEL,
+  contactWhatsAppUrl,
+} from "@/lib/skyra/constants";
 
 export const Route = createFileRoute("/property/$id")({
   head: () => ({
@@ -61,6 +66,9 @@ function PropertyDetail() {
 
   const property = properties.find((p) => p.id === id);
   const inCompare = property ? isSelected(property.id) : false;
+  const whatsappUrl = property
+    ? contactWhatsAppUrl({ title: property.title, locality: property.locality })
+    : contactWhatsAppUrl();
 
   function handleCompareToggle() {
     if (!property) return;
@@ -282,18 +290,27 @@ function PropertyDetail() {
           </div>
 
           <div className="rounded-xl border border-border bg-navy p-6 text-navy-foreground">
-            <h2 className="eyebrow text-gold">Owner contact</h2>
+            <h2 className="eyebrow text-gold">Contact Skyra</h2>
             <p className="mt-4 flex items-center gap-2 text-sm">
-              <User className="h-4 w-4 text-gold" /> {property.ownerContactName}
+              <User className="h-4 w-4 text-gold" /> Skyra Realty
             </p>
             <p className="mt-2 flex items-center gap-2 text-sm">
-              <Phone className="h-4 w-4 text-gold" /> {property.ownerContactPhone}
+              <Phone className="h-4 w-4 text-gold" /> {CONTACT_PHONE_DISPLAY}
             </p>
-            <Button asChild variant="gold" className="mt-5 w-full">
-              <a href={`tel:${property.ownerContactPhone.replace(/\s/g, "")}`}>
-                Call owner
-              </a>
-            </Button>
+            <div className="mt-5 grid gap-2">
+              <Button asChild variant="gold" className="w-full">
+                <a href={`tel:${CONTACT_PHONE_TEL}`}>Call now</a>
+              </Button>
+              <Button asChild variant="goldOutline" className="w-full border-gold/40 text-gold hover:bg-navy-deep">
+                <a
+                  href={whatsappUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  WhatsApp
+                </a>
+              </Button>
+            </div>
           </div>
         </aside>
       </div>
@@ -307,7 +324,7 @@ function PropertyDetail() {
                 {formatPrice(property.price)}
               </p>
               <p className="truncate text-xs text-muted-foreground">
-                {property.ownerContactName}
+                {CONTACT_PHONE_DISPLAY}
               </p>
             </div>
             <Button
@@ -319,8 +336,17 @@ function PropertyDetail() {
             >
               <GitCompareArrows className="h-4 w-4" />
             </Button>
+            <Button asChild variant="goldOutline" size="sm" className="shrink-0 rounded-full px-3">
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Chat
+              </a>
+            </Button>
             <Button asChild variant="gold" className="shrink-0 rounded-full px-5">
-              <a href={`tel:${property.ownerContactPhone.replace(/\s/g, "")}`}>
+              <a href={`tel:${CONTACT_PHONE_TEL}`}>
                 <Phone className="h-4 w-4" /> Call
               </a>
             </Button>

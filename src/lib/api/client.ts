@@ -1,9 +1,8 @@
-const DEFAULT_API_URL = "http://localhost:8010";
+const DEFAULT_API_URL = "https://house.bengalurutechcommunity.com";
 
 /**
  * Absolute FastAPI base URL.
- * Keep frontend and API on the same hostname (both `localhost`) so
- * session cookies work across ports in local development.
+ * Override locally with VITE_API_URL in `.env` (e.g. http://localhost:8010).
  */
 export function getApiBaseUrl(): string {
   const fromEnv = (

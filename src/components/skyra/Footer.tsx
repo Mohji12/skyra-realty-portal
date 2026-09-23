@@ -1,6 +1,12 @@
 import { Link } from "@tanstack/react-router";
 import { Logo, SkylineDivider } from "./Logo";
-import { LOCALITIES, PROPERTY_TYPES } from "@/lib/skyra/constants";
+import {
+  CONTACT_PHONE_DISPLAY,
+  CONTACT_PHONE_TEL,
+  CONTACT_WHATSAPP_URL,
+  LOCALITIES,
+  PROPERTY_TYPES,
+} from "@/lib/skyra/constants";
 
 export function Footer() {
   return (
@@ -55,8 +61,18 @@ export function Footer() {
             <p>Skyra Realty</p>
             <p>4th Floor, 100 Ft Road, Indiranagar, Bengaluru 560038</p>
             <p>
-              <a href="tel:+918045671200" className="hover:text-gold">
-                +91 80 4567 1200
+              <a href={`tel:${CONTACT_PHONE_TEL}`} className="hover:text-gold">
+                {CONTACT_PHONE_DISPLAY}
+              </a>
+            </p>
+            <p>
+              <a
+                href={CONTACT_WHATSAPP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-gold"
+              >
+                WhatsApp
               </a>
             </p>
             <p>
@@ -68,8 +84,7 @@ export function Footer() {
         </div>
       </div>
       <div className="border-t border-gold/15 px-4 py-5 text-center text-xs text-navy-foreground/50">
-        © {new Date().getFullYear()} Skyra Realty. All listings are illustrative demo
-        data stored in your browser.
+        © {new Date().getFullYear()} Skyra Realty. Listings served from Skyra Realty.
       </div>
     </footer>
   );
